@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>OpenBudget Ovoz Berish</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        .phone-display {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .phone-display label {
+            display: block;
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+
+        .phone-display .phone-number {
+            font-size: 20px;
+            font-weight: 600;
+            font-family: monospace;
+        }
+
+        .captcha-section {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .captcha-section h2 {
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .captcha-images {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .captcha-image-container {
+            position: relative;
+        }
+
+        .captcha-image-container label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .captcha-image-container img {
+            width: 100%;
+            border-radius: 8px;
+            display: block;
+        }
+
+        #imageBContainer {
+            position: relative;
+            cursor: crosshair;
+        }
+
+        .point-marker {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 119, 145, 0.3);
+            border: 2px solid #007791;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .refresh-btn {
+            background: var(--tg-theme-button-color, #007791);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .refresh-btn:active {
+            opacity: 0.8;
+        }
+
+        .points-display {
+            margin-top: 12px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .clear-btn {
+            background: transparent;
+            color: var(--tg-theme-link-color, #007791);
+            border: 1px solid var(--tg-theme-link-color, #007791);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-top: 3px solid var(--tg-theme-button-color, #007791);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .instructions {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗳️ Ovoz Berish</h1>
+            <p>OpenBudget.uz</p>
+        </div>
+
+        <div class="phone-display">
+            <label>📞 Telefon raqamingiz:</label>
+            <div class="phone-number" id="phoneDisplay">+998XXXXXXXXX</div>
+        </div>
+
+        <div class="instructions">
+            <strong>📋 Ko'rsatma:</strong>
+            <ol>
+                <li><strong>A rasmdagi</strong> harflarni eslang</li>
+                <li><strong>B rasmda</strong> o'sha harflarning joyini belgilang (2 ta nuqta)</li>
+                <li><strong>"SMS yuborish"</strong> tugmasini bosing</li>
+                <li>SMS kod botga yuboriladi</li>
+            </ol>
+        </div>
+
+        <div class="captcha-section">
+            <h2>1️⃣ A rasm - Harflarni eslang</h2>
+            <div class="captcha-image-container">
+                <img id="imageA" src="" alt="Captcha A" />
+            </div>
+        </div>
+
+        <div class="captcha-section">
+            <h2>2️⃣ B rasm - Harflarni belgilang</h2>
+            <div class="captcha-image-container">
+                <div id="imageBContainer">
+                    <img id="imageB" src="" alt="Captcha B" />
+                </div>
+            </div>
+            <div class="points-display">
+                Belgilangan nuqtalar: <strong id="pointsCount">0/2</strong>
+            </div>
+            <button class="clear-btn" onclick="clearPoints()">🗑️ Tozalash</button>
+        </div>
+
+        <button class="refresh-btn" onclick="refreshCaptcha()">🔄 Yangi captcha</button>
+
+        <div class="error-message" id="errorMessage"></div>
+        <div class="success-message" id="successMessage"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 16px;">Captcha yuklanmoqda...</p>
+        </div>
+    </div>
+
+    <script>
+        // Telegram Web App initialization
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.MainButton.setText("SMS yuborish");
+        tg.MainButton.hide();
+
+        // Get phone number from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const phoneNumber = urlParams.get('phone') || '+998XXXXXXXXX';
+        document.getElementById('phoneDisplay').textContent = phoneNumber;
+
+        // Backend URL - O'zgartiring!
+        const BACKEND_URL = 'http://localhost:5000'; // Local test uchun
+        // const BACKEND_URL = 'https://your-backend.herokuapp.com'; // Production
+
+        // Captcha state
+        let points = [];
+        let captchaLoaded = false;
+
+        // Load captcha
+        async function loadCaptcha() {
+            try {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('errorMessage').style.display = 'none';
+                
+                const response = await fetch(`${BACKEND_URL}/api/get-captcha`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('imageA').src = data.imageA;
+                    document.getElementById('imageB').src = data.imageB;
+                    captchaLoaded = true;
+                    document.getElementById('loading').style.display = 'none';
+                } else {
+                    throw new Error(data.message || 'Captcha yuklanmadi');
+                }
+            } catch (error) {
+                showError('Captcha yuklanishda xatolik: ' + error.message);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Handle image B click
+        document.getElementById('imageBContainer').addEventListener('click', (e) => {
+            if (points.length >= 2) return;
+
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const point = {
+                id: `point_${Date.now()}`,
+                x: Math.round(x),
+                y: Math.round(y)
+            };
+
+            points.push(point);
+            drawPoints();
+            updatePointsCount();
+            
+            if (points.length === 2) {
+                tg.MainButton.show();
+            }
+        });
+
+        function drawPoints() {
+            // Remove old markers
+            document.querySelectorAll('.point-marker').forEach(el => el.remove());
+            
+            // Draw new markers
+            points.forEach(point => {
+                const marker = document.createElement('div');
+                marker.className = 'point-marker';
+                marker.style.left = point.x + 'px';
+                marker.style.top = point.y + 'px';
+                marker.id = point.id;
+                document.getElementById('imageBContainer').appendChild(marker);
+            });
+        }
+
+        function updatePointsCount() {
+            document.getElementById('pointsCount').textContent = `${points.length}/2`;
+        }
+
+        function clearPoints() {
+            points = [];
+            drawPoints();
+            updatePointsCount();
+            tg.MainButton.hide();
+        }
+
+        function refreshCaptcha() {
+            clearPoints();
+            loadCaptcha();
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+        }
+
+        // Main button click - Send SMS
+        tg.MainButton.onClick(async () => {
+            if (points.length !== 2) {
+                showError('Iltimos, 2 ta nuqtani belgilang!');
+                return;
+            }
+
+            try {
+                tg.MainButton.showProgress();
+                
+                const response = await fetch(`${BACKEND_URL}/api/send-sms`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        phone: phoneNumber,
+                        points: points
+                    })
+                });
+
+                const data = await response.json();
+                
+                tg.MainButton.hideProgress();
+
+                if (data.success) {
+                    showSuccess('✅ SMS yuborildi! Botda SMS kodni kiriting.');
+                    tg.MainButton.setText("✅ SMS yuborildi");
+                    tg.MainButton.disable();
+                    
+                    // 2 sekunddan keyin yopish
+                    setTimeout(() => {
+                        tg.close();
+                    }, 2000);
+                } else {
+                    showError(data.message || 'Xatolik yuz berdi');
+                    tg.MainButton.enable();
+                }
+            } catch (error) {
+                tg.MainButton.hideProgress();
+                tg.MainButton.enable();
+                showError('Xatolik: ' + error.message);
+            }
+        });
+
+        // Initial load
+        loadCaptcha();
+    </script>
+</body>
+</html>
